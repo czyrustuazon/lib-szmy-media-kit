@@ -1,0 +1,14 @@
+#!/bin/sh
+# Coverage gate: fails when total statement coverage of the Go packages is below COVER_MIN
+# (default 100).
+set -eu
+
+MIN="${COVER_MIN:-100}"
+go test -covermode=atomic -coverprofile=coverage.out ./...
+
+total=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub("%", "", $3); print $3 }')
+echo "total coverage: ${total}% (minimum ${MIN}%)"
+awk -v t="$total" -v m="$MIN" 'BEGIN { exit (t + 0 >= m + 0) ? 0 : 1 }' || {
+  echo "coverage gate failed" >&2
+  exit 1
+}

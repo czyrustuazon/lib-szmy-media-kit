@@ -1,0 +1,26 @@
+{
+  "name": "media-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Audio visualizer with pluggable modes, resumable chunked uploads, fuzzy search and a virtual list. No dependencies, no build step.",
+  "type": "module",
+  "files": [
+    "js/"
+  ],
+  "exports": {
+    "./viz": "./js/viz/index.js",
+    "./viz/core": "./js/viz/core.js",
+    "./viz/bars": "./js/viz/bars.js",
+    "./viz/scope": "./js/viz/scope.js",
+    "./upload": "./js/upload.js",
+    "./fuzzy": "./js/fuzzy.js",
+    "./virtual-list": "./js/virtual-list.js"
+  },
+  "scripts": {
+    "test": "node --test tests/js/*.test.js",
+    "cover": "node --test --experimental-test-coverage tests/js/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
