@@ -287,24 +287,36 @@ func Prune(dir string, keep func(path string) bool) []string {
 // When existing is not empty, unwrapping stops at a folder whose name already exists in
 // existing: that folder is real content to merge into, not a wrapper. Without this, an archive
 // with a few new files for one album would lose its folder name.
-func UnwrapLone(dir, existing string) {
+//
+// It returns the slash-separated names of the folders it removed ("A/B"), so callers that
+// listed paths before unwrapping (a prune report) can strip the same prefix.
+func UnwrapLone(dir, existing string) string {
+	var stripped []string
 	for depth := 0; depth < 8; depth++ { // bounded: never loops forever on odd layouts
 		entries, err := os.ReadDir(dir)
 		if err != nil || len(entries) != 1 || !entries[0].IsDir() {
-			return
+			break
 		}
+		name := entries[0].Name()
 		if existing != "" {
-			if st, err := os.Lstat(filepath.Join(existing, entries[0].Name())); err == nil && st.IsDir() {
-				return
+			if st, err := os.Lstat(filepath.Join(existing, name)); err == nil && st.IsDir() {
+				break
 			}
 		}
-		wrapper := filepath.Join(dir, entries[0].Name())
+		wrapper := filepath.Join(dir, name)
 		inner, _ := os.ReadDir(wrapper)
+		moved := true
 		for _, e := range inner {
 			if os.Rename(filepath.Join(wrapper, e.Name()), filepath.Join(dir, e.Name())) != nil {
-				return // e.g. "Album/Album": leave the nesting as it is
+				moved = false
+				break // e.g. "Album/Album": leave the nesting as it is
 			}
 		}
+		if !moved {
+			break
+		}
 		os.Remove(wrapper)
+		stripped = append(stripped, name)
 	}
+	return strings.Join(stripped, "/")
 }

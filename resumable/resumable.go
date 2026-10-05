@@ -682,7 +682,15 @@ func (m *Manager) finishArchive(key, clean, destDir, stagingPath, metaPath strin
 		discard(stagingPath, metaPath)
 		return fail("%s: %v", name, err)
 	}
-	unpack.UnwrapLone(tmp, destDir)
+	// Prune listed paths under any wrapper folders; strip what UnwrapLone removes so the
+	// report matches the tree that was actually merged.
+	if prefix := unpack.UnwrapLone(tmp, destDir); prefix != "" {
+		for i, rel := range skipped {
+			if rest, ok := strings.CutPrefix(rel, prefix+"/"); ok {
+				skipped[i] = rest
+			}
+		}
+	}
 	var added tally
 	if err := m.merge(tmp, destDir, &added); err != nil {
 		return fail("%v", err)

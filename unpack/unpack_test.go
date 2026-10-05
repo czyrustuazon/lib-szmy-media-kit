@@ -402,7 +402,9 @@ func TestUnwrapLone(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "A", "B"), 0o755)
 	writeFile(t, filepath.Join(dir, "A", "B"), "x.mp3", nil)
 	writeFile(t, filepath.Join(dir, "A", "B"), "y.mp3", nil)
-	UnwrapLone(dir, "")
+	if got := UnwrapLone(dir, ""); got != "A/B" {
+		t.Errorf("stripped prefix %q, want A/B", got)
+	}
 	if files := listTree(t, dir); len(files) != 2 || files[0] != "x.mp3" || files[1] != "y.mp3" {
 		t.Errorf("two wrappers should be removed: %v", files)
 	}
@@ -412,7 +414,9 @@ func TestUnwrapLone(t *testing.T) {
 	os.MkdirAll(filepath.Join(multi, "A"), 0o755)
 	writeFile(t, filepath.Join(multi, "A"), "x.mp3", nil)
 	writeFile(t, multi, "y.mp3", nil)
-	UnwrapLone(multi, "")
+	if got := UnwrapLone(multi, ""); got != "" {
+		t.Errorf("nothing to unwrap, got prefix %q", got)
+	}
 	if !exists(filepath.Join(multi, "A", "x.mp3")) {
 		t.Error("a folder next to a file is not a wrapper")
 	}
@@ -421,7 +425,9 @@ func TestUnwrapLone(t *testing.T) {
 	clash := t.TempDir()
 	os.MkdirAll(filepath.Join(clash, "Album", "Album"), 0o755)
 	writeFile(t, filepath.Join(clash, "Album", "Album"), "z.mp3", nil)
-	UnwrapLone(clash, "")
+	if got := UnwrapLone(clash, ""); got != "" {
+		t.Errorf("clash left alone, got prefix %q", got)
+	}
 	if !exists(filepath.Join(clash, "Album", "Album", "z.mp3")) && !exists(filepath.Join(clash, "Album", "z.mp3")) {
 		t.Error("files must never be lost while unwrapping")
 	}
@@ -432,12 +438,18 @@ func TestUnwrapLone(t *testing.T) {
 	src := t.TempDir()
 	os.MkdirAll(filepath.Join(src, "Outer", "d1"), 0o755)
 	writeFile(t, filepath.Join(src, "Outer", "d1"), "n.mp3", nil)
-	UnwrapLone(src, dest)
+	if got := UnwrapLone(src, dest); got != "Outer" {
+		t.Errorf("stripped %q, want Outer", got)
+	}
 	if !exists(filepath.Join(src, "d1", "n.mp3")) {
 		t.Errorf("the wrapper goes, the existing folder stays: %v", listTree(t, src))
 	}
 
 	// A missing directory and a file are no-ops.
-	UnwrapLone(filepath.Join(dir, "missing"), "")
-	UnwrapLone(writeFile(t, t.TempDir(), "file", nil), "")
+	if got := UnwrapLone(filepath.Join(dir, "missing"), ""); got != "" {
+		t.Errorf("missing dir: %q", got)
+	}
+	if got := UnwrapLone(writeFile(t, t.TempDir(), "file", nil), ""); got != "" {
+		t.Errorf("file: %q", got)
+	}
 }

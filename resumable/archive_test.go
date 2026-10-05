@@ -76,6 +76,30 @@ func TestPruneHookAndReport(t *testing.T) {
 	if string(text) != "2 files from a.zip were left out.\nOnly mp3 files are kept.\n\nnotes.txt\nrun.sh\n" {
 		t.Errorf("report:\n%s", text)
 	}
+
+	// A wrapper folder is unwrapped from the tree and from the report of what was left out.
+	rel2 := start(t, m, "Great Album")
+	wrapped := zipOf(t, map[string][]byte{
+		"Great Album/01.mp3":    song,
+		"Great Album/notes.txt": []byte("liner notes"),
+		"Great Album/run.sh":    []byte("rm -rf /"),
+	})
+	send(t, m, rel2, "great.zip", wrapped, 4096)
+	st = finish(t, m, rel2, "great.zip", len(wrapped))
+	if st.State != Done || st.Added != 1 || st.Skipped != 2 || !st.HasReport {
+		t.Fatalf("wrapped status: %+v", st)
+	}
+	if got := strings.Join(listTree(t, filepath.Join(root, "uploads", "Great Album")), ","); got != "01.mp3" {
+		t.Fatalf("wrapper unwrapped: got %s", got)
+	}
+	rp, err = m.Report(rel2, "great.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, _ = os.ReadFile(rp)
+	if string(text) != "2 files from great.zip were left out.\nOnly mp3 files are kept.\n\nnotes.txt\nrun.sh\n" {
+		t.Errorf("wrapped report must drop the wrapper prefix:\n%s", text)
+	}
 }
 
 func TestPruneErrorFailsTheUpload(t *testing.T) {
