@@ -2,6 +2,7 @@ package unpack
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -47,24 +48,57 @@ func escapeAt(s string) (rune, int) {
 	return 0, 0
 }
 
-// FixNames renames everything below dir whose name carries unzip escapes (see DecodeEscapes)
-// to the decoded name. It is best effort: an entry whose decoded name is already taken, or
-// that cannot be renamed, keeps the name it has.
-func FixNames(dir string) {
-	entries, _ := os.ReadDir(dir)
+// NameFix finds, and unless DryRun is set renames, everything below a folder whose name carries
+// unzip escapes (see DecodeEscapes). It is best effort: an entry whose decoded name is already
+// taken, or that cannot be renamed, keeps the name it has.
+type NameFix struct {
+	DryRun bool // only report what would be renamed
+	// Skip leaves an entry (and, for a folder, everything in it) alone. rel is its path below
+	// the folder, slash-separated. Nil skips nothing.
+	Skip func(rel string, isDir bool) bool
+}
+
+// Run fixes the names below dir. It returns, for every file whose path changed (by its own
+// rename or a folder's above it), its old path and its new one, slash-separated and relative
+// to dir.
+func (o NameFix) Run(dir string) map[string]string {
+	moves := map[string]string{}
+	o.walk(dir, "", "", moves)
+	return moves
+}
+
+// FixNames renames everything below dir that carries unzip escapes and reports the moves (see
+// NameFix).
+func FixNames(dir string) map[string]string { return NameFix{}.Run(dir) }
+
+// renameFile is os.Rename, swapped out by tests (a real rename rarely fails here).
+var renameFile = os.Rename
+
+// walk fixes the entries of abs, which used to be at oldRel and is now at newRel.
+func (o NameFix) walk(abs, oldRel, newRel string, moves map[string]string) {
+	entries, _ := os.ReadDir(abs)
+	taken := map[string]bool{} // never rename onto a name that is there, or handed out already
 	for _, e := range entries {
-		from := filepath.Join(dir, e.Name())
+		taken[e.Name()] = true
+	}
+	for _, e := range entries {
+		name, from := e.Name(), path.Join(oldRel, e.Name())
+		if o.Skip != nil && o.Skip(from, e.IsDir()) {
+			continue
+		}
+		onDisk := filepath.Join(abs, name)
+		if fixed := DecodeEscapes(name); fixed != name && !taken[fixed] {
+			if o.DryRun {
+				taken[fixed], name = true, fixed
+			} else if renameFile(onDisk, filepath.Join(abs, fixed)) == nil {
+				taken[fixed], name, onDisk = true, fixed, filepath.Join(abs, fixed)
+			}
+		}
+		to := path.Join(newRel, name)
 		if e.IsDir() {
-			FixNames(from)
+			o.walk(onDisk, from, to, moves)
+		} else if from != to {
+			moves[from] = to
 		}
-		fixed := DecodeEscapes(e.Name())
-		if fixed == e.Name() {
-			continue
-		}
-		to := filepath.Join(dir, fixed)
-		if _, err := os.Lstat(to); err == nil {
-			continue
-		}
-		os.Rename(from, to)
 	}
 }
