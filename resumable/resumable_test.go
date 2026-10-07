@@ -130,15 +130,16 @@ func variant(i byte) []byte { return append(append([]byte{}, song...), 0xFF, 0xF
 
 func TestSanitizeFolderName(t *testing.T) {
 	cases := map[string]string{
-		"Album":               "Album",
-		"  My   Album  ":      "My Album",
-		`a/b\c:d*e?f"g<h>i|j`: "a b c d e f g h i j",
-		"tab\there\x00":       "tabhere",
-		"...":                 "upload",
-		"":                    "upload",
-		"   ":                 "upload",
-		"Trailing dots...":    "Trailing dots",
-		"日本語のアルバム":            "日本語のアルバム",
+		"Album":                        "Album",
+		"  My   Album  ":               "My Album",
+		`a/b\c:d*e?f"g<h>i|j`:          "a b c d e f g h i j",
+		"tab\there\x00":                "tabhere",
+		"...":                          "upload",
+		"":                             "upload",
+		"   ":                          "upload",
+		"Trailing dots...":             "Trailing dots",
+		"日本語のアルバム":                     "日本語のアルバム",
+		"#U3010#U30aa#U30ea#U3011 OST": "【オリ】 OST",
 	}
 	for in, want := range cases {
 		if got := SanitizeFolderName(in); got != want {
@@ -153,17 +154,18 @@ func TestSanitizeFolderName(t *testing.T) {
 
 func TestSanitizeFileName(t *testing.T) {
 	cases := map[string]string{
-		"song.mp3":               "song.mp3",
-		"../../etc/passwd":       "passwd",
-		`C:\Users\me\track.flac`: "track.flac",
-		`a<b>c:d"e|f?g*h.mp3`:    "a_b_c_d_e_f_g_h.mp3",
-		"  spaced.mp3  ":         "spaced.mp3",
-		".hidden.mp3":            "hidden.mp3",
-		"tab\tname\x00.wav":      "tabname.wav",
-		"":                       "",
-		"...":                    "",
-		"dir/":                   "",
-		"日本語.brstm":             "日本語.brstm",
+		"song.mp3":                   "song.mp3",
+		"../../etc/passwd":           "passwd",
+		`C:\Users\me\track.flac`:     "track.flac",
+		`a<b>c:d"e|f?g*h.mp3`:        "a_b_c_d_e_f_g_h.mp3",
+		"  spaced.mp3  ":             "spaced.mp3",
+		".hidden.mp3":                "hidden.mp3",
+		"tab\tname\x00.wav":          "tabname.wav",
+		"":                           "",
+		"...":                        "",
+		"dir/":                       "",
+		"日本語.brstm":                  "日本語.brstm",
+		"01 #U3010#U30aa#U3011.opus": "01 【オ】.opus",
 	}
 	for in, want := range cases {
 		if got := SanitizeFileName(in); got != want {

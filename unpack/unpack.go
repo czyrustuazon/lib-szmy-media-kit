@@ -81,12 +81,19 @@ func Verify(run Exec, filename, path string) error {
 }
 
 // Extract unpacks the archive at path into dest (created as needed), writing at most budget
-// bytes. filename decides the format, as for Verify.
+// bytes. filename decides the format, as for Verify. Names carrying unzip's "#Uxxxx" escapes
+// are decoded afterwards (see FixNames).
 func Extract(run Exec, filename, path, dest string, budget int64) error {
+	var err error
 	if IsZip(filename) {
-		return Zip(path, dest, budget)
+		err = Zip(path, dest, budget)
+	} else {
+		err = SevenZip(run, path, dest, budget)
 	}
-	return SevenZip(run, path, dest, budget)
+	if err == nil {
+		FixNames(dest)
+	}
+	return err
 }
 
 // openZip opens a zip. Depending on GODEBUG, Go reports ErrInsecurePath (entries

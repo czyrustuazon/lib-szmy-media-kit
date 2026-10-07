@@ -8,10 +8,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/czyrustuazon/lib-szmy-media-kit/unpack"
 )
 
 // SanitizeFolderName turns a title into a safe single path segment ("upload" if nothing
-// usable is left).
+// usable is left). unzip's "#Uxxxx" escapes are decoded (see unpack.DecodeEscapes).
 func SanitizeFolderName(name string) string {
 	name = strings.Map(func(r rune) rune {
 		switch {
@@ -21,7 +23,7 @@ func SanitizeFolderName(name string) string {
 			return ' '
 		}
 		return r
-	}, name)
+	}, unpack.DecodeEscapes(name))
 	name = strings.Trim(strings.Join(strings.Fields(name), " "), " .")
 	if name == "" {
 		return "upload"
@@ -33,14 +35,14 @@ func SanitizeFolderName(name string) string {
 }
 
 // SanitizeFileName reduces an uploaded file's name to a safe base name ("" if
-// nothing usable is left).
+// nothing usable is left). unzip's "#Uxxxx" escapes are decoded (see unpack.DecodeEscapes).
 func SanitizeFileName(name string) string {
 	name = strings.ReplaceAll(name, "\\", "/")
 	if i := strings.LastIndex(name, "/"); i >= 0 {
 		name = name[i+1:]
 	}
 	var b strings.Builder
-	for _, r := range name {
+	for _, r := range unpack.DecodeEscapes(name) {
 		switch {
 		case r < 0x20 || r == 0x7f:
 		case strings.ContainsRune(`<>:"|?*`, r):
